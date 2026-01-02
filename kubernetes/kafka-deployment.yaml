@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+  labels:
+    app: kafka-consumer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      - name: consumer
+        image: python:3.11-slim
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            pip install kafka-python elasticsearch
+            python /app/consumer.py
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "MASTER_PRIVATE_IP:9092"
+        - name: KAFKA_TOPIC
+          value: "api-events"
+        - name: KAFKA_GROUP_ID
+          value: "consumer-group-1"
+        - name: ELASTICSEARCH_HOST
+          value: "MASTER_PRIVATE_IP:9200"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+      volumes:
+      - name: app-code
+        configMap:
+          name: consumer-code
