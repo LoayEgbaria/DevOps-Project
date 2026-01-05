@@ -27,5 +27,5 @@ output "api_gateway_url" {
 }
 
 output "ssh_command_master" {
-  value = "ssh -i ${var.key_name}.pem ec2-user@${aws_instance.k8s_master.public_ip}"
+  value = "ssh -i MyKey.pem ec2-user@${aws_instance.k8s_master.public_ip}"
 }

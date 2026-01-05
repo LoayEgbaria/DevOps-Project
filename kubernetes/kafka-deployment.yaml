@@ -24,13 +24,13 @@ spec:
             python /app/consumer.py
         env:
         - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "MASTER_PRIVATE_IP:9092"
+          value: "10.0.1.252:9092"
         - name: KAFKA_TOPIC
           value: "api-events"
         - name: KAFKA_GROUP_ID
           value: "consumer-group-1"
         - name: ELASTICSEARCH_HOST
-          value: "MASTER_PRIVATE_IP:9200"
+          value: "10.0.1.252:9200"
         volumeMounts:
         - name: app-code
           mountPath: /app

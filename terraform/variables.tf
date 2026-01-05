@@ -25,10 +25,22 @@ variable "availability_zones" {
 
 variable "instance_type" {
   description = "EC2 instance type"
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "key_name" {
   description = "SSH key pair name"
-  default     = "devops-key"
+  default     = "MyKey"
+}
+
+variable "kafka_topic_name" {
+  description = "The shared Kafka topic for all events (API and S3)"
+  type        = string
+  default     = "main-events-stream"
+}
+
+variable "kafka_group_id" {
+  description = "The consumer group ID for Kubernetes consumers"
+  type        = string
+  default     = "consumer-group-1"
 }

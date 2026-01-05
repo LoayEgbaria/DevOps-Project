@@ -49,17 +49,34 @@ resource "aws_api_gateway_method_response" "response_200" {
 }
 
 # API Gateway Integration Response
-resource "aws_api_gateway_integration_response" "mock_response" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.events.id
-  http_method = aws_api_gateway_method.post_events.http_method
-  status_code = aws_api_gateway_method_response.response_200.status_code
+# resource "aws_api_gateway_integration_response" "mock_response" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   resource_id = aws_api_gateway_resource.events.id
+#   http_method = aws_api_gateway_method.post_events.http_method
+#   status_code = aws_api_gateway_method_response.response_200.status_code
 
-  response_templates = {
-    "application/json" = "{\"message\": \"Event received\"}"
-  }
+#   response_templates = {
+#     "application/json" = "{\"message\": \"Event received\"}"
+#   }
 
-  depends_on = [aws_api_gateway_integration.mock]
+#   depends_on = [aws_api_gateway_integration.mock]
+# }
+resource "aws_api_gateway_integration" "lambda_link" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.events.id
+  http_method             = aws_api_gateway_method.post_events.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.s3_processor.invoke_arn
+}
+
+# Give API Gateway permission to call the Lambda
+resource "aws_lambda_permission" "apigw_lambda" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.s3_processor.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
 }
 
 # API Gateway Deployment

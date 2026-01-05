@@ -1,19 +1,18 @@
 #!/bin/bash
 # This script installs Kubernetes on Amazon Linux 2
-
 set -e
 
 echo "Installing Kubernetes..."
 
-# Disable SELinux
+# Disable SELinux for Kubernetes compatibility
 sudo setenforce 0
 sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 
-# Disable swap
+# Disable swap (Kubernetes requirement)
 sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
 
-# Load kernel modules
+# Load kernel modules for networking
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
@@ -22,7 +21,7 @@ EOF
 sudo modprobe overlay
 sudo modprobe br_netfilter
 
-# Set sysctl params
+# Set sysctl params for bridging
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -31,19 +30,19 @@ EOF
 
 sudo sysctl --system
 
-# Install containerd
+# Install containerd runtime
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 sudo yum install -y containerd.io
 
-# Configure containerd
+# Configure containerd with SystemdCgroup
 sudo mkdir -p /etc/containerd
 containerd config default | sudo tee /etc/containerd/config.toml
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 
-# Add Kubernetes repo
+# Add Kubernetes repository
 cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes

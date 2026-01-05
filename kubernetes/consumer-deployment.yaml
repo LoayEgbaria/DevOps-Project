@@ -4,6 +4,7 @@ metadata:
   name: consumer-code
 data:
   consumer.py: |
+    # (Your Python code is correct here)
     import json
     import os
     import logging
@@ -11,27 +12,15 @@ data:
     from elasticsearch import Elasticsearch
     from datetime import datetime
     
-    # Setup logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
     
-    # Kafka configuration
     KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
-    KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'api-events')
+    KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'main-events-stream')
     KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'consumer-group-1')
-    
-    # Elasticsearch configuration
     ES_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost:9200')
     
     def main():
-        logger.info(f"Starting Kafka consumer for topic: {KAFKA_TOPIC}")
-        logger.info(f"Connecting to Kafka: {KAFKA_BOOTSTRAP_SERVERS}")
-        logger.info(f"Connecting to Elasticsearch: {ES_HOST}")
-        
-        # Initialize Elasticsearch client
         try:
             es = Elasticsearch([f'http://{ES_HOST}'])
             logger.info("Connected to Elasticsearch")
@@ -39,7 +28,6 @@ data:
             logger.error(f"Failed to connect to Elasticsearch: {e}")
             es = None
         
-        # Initialize Kafka consumer
         consumer = KafkaConsumer(
             KAFKA_TOPIC,
             bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -49,31 +37,20 @@ data:
             value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
         
-        logger.info("Kafka consumer started successfully")
-        
-        # Consume messages
         for message in consumer:
             try:
                 event_data = message.value
                 logger.info(f"Received message: {event_data}")
-                
-                # Log to Elasticsearch
                 if es:
                     doc = {
                         'timestamp': datetime.utcnow().isoformat(),
                         'topic': message.topic,
-                        'partition': message.partition,
-                        'offset': message.offset,
-                        'data': event_data,
-                        'consumer_group': KAFKA_GROUP_ID
+                        'data': event_data
                     }
-                    
                     es.index(index='kafka-events', document=doc)
-                    logger.info(f"Logged to Elasticsearch: {doc}")
-                
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
-    
+
     if __name__ == "__main__":
         main()
 ---
@@ -89,3 +66,40 @@ spec:
       port: 80
       targetPort: 8080
   type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      - name: consumer
+        image: python:3.11-slim
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            pip install kafka-python elasticsearch
+            python /app/consumer.py
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "10.0.1.252:9092"
+        - name: KAFKA_TOPIC
+          value: "main-events-stream"
+        - name: ELASTICSEARCH_HOST
+          value: "10.0.1.252:9200"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+      volumes:
+      - name: app-code
+        configMap:
+          name: consumer-code

@@ -1,47 +1,68 @@
 import json
 import os
-import boto3
-from datetime import datetime
+from kafka import KafkaProducer
 
 def lambda_handler(event, context):
-    """
-    Lambda function triggered by S3 upload
-    Sends event to Kafka
-    """
-    
     print(f"Received event: {json.dumps(event)}")
     
-    # Extract S3 event details
-    for record in event['Records']:
-        bucket = record['s3']['bucket']['name']
-        key = record['s3']['object']['key']
-        event_time = record['eventTime']
+    # Initialize Kafka Producer
+    # Environment variables are defined in your s3-lambda.tf
+    producer = KafkaProducer(
+        bootstrap_servers=os.environ['KAFKA_BOOTSTRAP_SERVERS'],
+        value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+        # Adding a short timeout ensures the Lambda doesn't hang if Kafka is down
+        request_timeout_ms=5000 
+    )
+    
+    topic = os.environ['KAFKA_TOPIC']
+
+    # --- SCENARIO 1: API GATEWAY (Product, Order, Supplier) ---
+    if 'httpMethod' in event:
+        print("Processing API Gateway Event")
+        try:
+            body = json.loads(event['body']) if event.get('body') else {}
+            
+            # Enrich the message with metadata
+            message = {
+                'source': 'api_gateway',
+                'method': event['httpMethod'],
+                'data': body
+            }
+            
+            producer.send(topic, message)
+            producer.flush() # Ensure message is sent before Lambda finishes
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'message': 'API Event sent to Kafka', 'topic': topic})
+            }
+        except Exception as e:
+            print(f"Error processing API event: {str(e)}")
+            return {'statusCode': 500, 'body': json.dumps(f"Error: {str(e)}")}
+
+    # --- SCENARIO 2: S3 UPLOAD TRIGGER ---
+    elif 'Records' in event:
+        print("Processing S3 Event")
+        for record in event['Records']:
+            message = {
+                'source': 's3_upload',
+                'bucket': record['s3']['bucket']['name'],
+                'key': record['s3']['object']['key'],
+                'size': record['s3']['object']['size'],
+                'timestamp': record['eventTime']
+            }
+            
+            producer.send(topic, message)
+            print(f"S3 Event sent to Kafka: {message['key']}")
         
-        message = {
-            'event_type': 's3_upload',
-            'bucket': bucket,
-            'key': key,
-            'timestamp': event_time,
-            'size': record['s3']['object']['size']
+        producer.flush()
+        return {
+            'statusCode': 200,
+            'body': json.dumps('S3 Events processed successfully')
         }
-        
-        print(f"S3 Upload Event: {json.dumps(message)}")
-        
-        # In production, you would send this to Kafka
-        # For this project, we'll log it and it will be picked up by the logging system
-        
-        # Note: To actually send to Kafka from Lambda, you would need:
-        # 1. kafka-python library in Lambda layer
-        # 2. VPC configuration to reach Kafka
-        # 3. Code like:
-        # from kafka import KafkaProducer
-        # producer = KafkaProducer(
-        #     bootstrap_servers=os.environ['KAFKA_BOOTSTRAP_SERVERS'],
-        #     value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        # )
-        # producer.send(os.environ['KAFKA_TOPIC'], message)
-        
+
     return {
-        'statusCode': 200,
-        'body': json.dumps('Event processed successfully')
+        'statusCode': 400,
+        'body': json.dumps('Unsupported event source')
     }
