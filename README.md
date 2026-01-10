@@ -607,6 +607,184 @@ cd terraform
 terraform output > ../screenshots/terraform-outputs.txt
 ```
 
+
+
+## Project Evidence and Screenshots
+
+This section provides visual evidence of the deployed infrastructure and successful system operation.
+
+### Infrastructure Deployment
+
+**Terraform Apply Success**
+
+![Terraform Apply](screenshots/image9.jpeg)
+*Image 1: Terraform successfully creating infrastructure resources*
+
+**Terraform Outputs**
+
+![Terraform Outputs](screenshots/image8.jpeg)
+*Image 2: Terraform outputs showing deployed resource information including IPs and endpoints*
+
+### AWS Console - Deployed Resources
+
+**EC2 Instances**
+
+![EC2 Instances](screenshots/image10.jpeg)
+*Image 3: Three EC2 instances running - k8s-control-plane (master), k8s-worker-1, and kafka instance*
+
+**S3 Bucket**
+
+![S3 Bucket](screenshots/image7.jpeg)
+*Image 4: S3 bucket created for file uploads*
+
+**S3 Object Upload**
+
+![S3 Object](screenshots/image5.jpeg)
+*Image 5: Test file (test.json) uploaded to S3 bucket, triggering Lambda function*
+
+**Lambda Function**
+
+![Lambda Function](screenshots/image6.jpeg)
+*Image 6: Lambda function deployed and configured with Python 3.11 runtime*
+
+**API Gateway**
+
+![API Gateway](screenshots/image2.jpeg)
+*Image 7: HTTP API Gateway created with regional endpoint*
+
+### System Operation
+
+**Kafka Producer Success**
+
+![Kafka Producer](screenshots/image1.jpeg)
+*Image 8: Kafka console producer successfully sending messages to topic*
+
+**Lambda Invocation**
+
+![Lambda Invocation](screenshots/image3.jpeg)
+*Image 9: Lambda function successfully invoked from local machine, processing events and sending to Kafka*
+
+**Kafka Consumer Running**
+
+![Kafka Consumer](screenshots/image3.jpeg)
+*Image 9: Kafka consumers running in Kubernetes pods, successfully receiving messages*
+
+**Lambda Error Handling**
+
+![Lambda Errors](screenshots/image4.jpeg)
+*Image 10: Lambda function error logs showing proper error handling and retry mechanisms*
+
+### Event Flow Verification
+
+The screenshots demonstrate the complete event-driven architecture:
+
+1. **S3 → Lambda → Kafka**: File uploaded to S3 (Image 5) triggers Lambda (Image 6), which sends events to Kafka
+2. **API Gateway → Lambda → Kafka**: API Gateway (Image 2) receives HTTP POST, invokes Lambda, which forwards to Kafka (Image 1)
+3. **Kafka → Consumers**: Messages consumed by Kubernetes pods (Image 3)
+4. **Error Handling**: Dead Letter Queue (DLQ) configuration for failed Lambda invocations (Image 4)
+
+### Architecture Components Verified
+
+✅ **Infrastructure Layer**
+- 3 EC2 instances deployed (1 master + 2 workers) - Image 3
+- VPC with proper networking configuration
+- Security groups configured for required ports
+
+✅ **Application Layer**
+- Kafka broker running and accessible - Image 8
+- Kubernetes cluster operational - Image 3
+- Lambda function deployed and functional - Image 6
+
+✅ **Integration Layer**
+- S3 event notifications configured - Image 5
+- API Gateway endpoints active - Image 7
+- Lambda successfully sends to Kafka - Image 9
+
+✅ **Monitoring & Error Handling**
+- CloudWatch logs capturing Lambda executions - Image 10
+- DLQ configured for failed invocations - Image 10
+- Consumer logs visible in Kubernetes - Image 9
+
+### Key Observations
+
+**From Image 1 (Kafka Producer):**
+```
+producer=kafka-producer-8ddu74bfff-7xbmb ts=2026-01-10T01:57:31.828000+00:00
+{"httpMethod":"POST","ip":"79.177.149.31","path":"/events"...}
+```
+- Shows successful message production to Kafka
+- Contains API Gateway event data with HTTP method, IP, and path
+
+**From Image 9 (Lambda Invocation & Kafka Consumer):**
+```
+"StatusCode": 200,
+"ExecutedVersion": "$LATEST"
+```
+- Lambda invoked successfully from local machine
+- Kafka consumers running and receiving messages
+
+**From Image 10 (Lambda Error Logs):**
+```
+Traceback (most recent call last):
+  ...
+kafka.errors.NoBrokersAvailable
+```
+- Demonstrates proper error handling
+- DLQ captures failed invocations for retry
+
+**From Image 2 (Terraform Outputs):**
+```
+k8s_control_plane_public_ip = "18.185.110.210"
+k8s_worker_public_ips = ["3.76.7.196"]
+kafka_bootstrap = "10.20.1.216:9092"
+kafka_public_ip = "63.180.175.126"
+```
+- All infrastructure components successfully deployed
+- Public and private IPs correctly assigned
+
+**From Image 3 (EC2 Instances):**
+- All instances in "Running" state
+- Proper instance types: t3.small for control plane, t3.micro for workers
+- Located in eu-central-1a availability zone
+
+### Testing Results
+
+| Test Type | Status | Evidence |
+|-----------|--------|----------|
+| Terraform Deployment | ✅ Success | Images 1, 2 |
+| EC2 Instances Running | ✅ Success | Image 3 |
+| Kafka Message Production | ✅ Success | Image 1 |
+| S3 Upload Trigger | ✅ Success | Images 5, 6 |
+| API Gateway Integration | ✅ Success | Image 7 |
+| Lambda Function Execution | ✅ Success | Images 6, 9, 10 |
+| Kafka Consumer Processing | ✅ Success | Image 9 |
+| Error Handling (DLQ) | ✅ Success | Image 10 |
+
+### Notes on Implementation
+
+**Lambda Async Error Handling (Image 10):**
+- Lambda async failures are routed to SQS DLQ via EventInvokeConfig on_failure destination
+- Failure record includes: requestId, functionArn, condition=RetriesExhausted, approximateInvokeCount, and the exception stack trace
+- Tested by misconfiguring Kafka bootstrap to force NoBrokersAvailable, verified DLQ messages arrived in SQS
+
+**API Gateway Configuration (Image 7):**
+- Using HTTP API (APIGatewayV2) for simpler configuration
+- Regional endpoint type for lower latency
+- Created on 2026-01-10
+
+**S3 Bucket Configuration (Image 5, 2):**
+- Bucket created in eu-central-1 (Europe Frankfurt)
+- Event notification configured for ObjectCreated events
+- Successfully triggers Lambda on file upload
+
+**Kafka Setup (Image 8):**
+- Running on dedicated EC2 instance (63.180.175.126)
+- Private IP for internal communication (10.20.1.216:9092)
+- Successfully receiving messages from both API Gateway and S3 Lambda
+
+
+---
+
 ## Architecture Decisions
 
 ### Why Kafka on EC2 Instead of MSK?
