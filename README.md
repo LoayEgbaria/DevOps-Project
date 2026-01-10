@@ -556,7 +556,7 @@ aws logs tail /aws/lambda/devops-final-s3-processor --follow
 - `data.event: "api_test"`
 - `topic: "api-events"`
 
-## Collecting Evidence for Submission
+## Collecting Evidence
 
 ### AWS Console Screenshots
 
