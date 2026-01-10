@@ -7,12 +7,12 @@ This project implements a cloud-based, event-driven architecture on AWS using Ku
 ## Architecture
 ```
 ┌─────────────┐         ┌──────────┐         ┌─────────────────┐
-│ API Gateway │────────▶│  Lambda  │────────▶│  Apache Kafka  │
+│ API Gateway │────────▶│  Lambda  │───────▶│  Apache Kafka   │
 └─────────────┘         └──────────┘         └─────────────────┘
                                                        │
-┌─────────────┐         ┌──────────┐                  │
+┌─────────────┐         ┌──────────┐                   │
 │  S3 Bucket  │────────▶│  Lambda  │──────────────────┘
-└─────────────┘         └──────────┘                  │
+└─────────────┘         └──────────┘                   │
                                                        ▼
                                               ┌─────────────────┐
                                               │   Kubernetes    │
