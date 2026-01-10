@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+  namespace: default
+  labels:
+    app: kafka-consumer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      - name: consumer
+        image: python:3.11-slim
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Installing dependencies..."
+            pip install --no-cache-dir kafka-python elasticsearch
+            echo "Starting consumer..."
+            python /app/consumer.py
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "REPLACE_WITH_MASTER_PRIVATE_IP:9092"
+        - name: KAFKA_TOPIC
+          value: "api-events"
+        - name: KAFKA_GROUP_ID
+          value: "consumer-group-1"
+        - name: ELASTICSEARCH_HOST
+          value: "REPLACE_WITH_MASTER_PRIVATE_IP:9200"
+        volumeMounts:
+        - name: consumer-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: consumer-code
+        configMap:
+          name: kafka-consumer-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-consumer-service
+  namespace: default
+spec:
+  selector:
+    app: kafka-consumer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

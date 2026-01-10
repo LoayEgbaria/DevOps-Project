@@ -1,4 +1,4 @@
-# IAM Role for Lambda
+# IAM Role for Lambda Function
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role"
 
@@ -14,17 +14,21 @@ resource "aws_iam_role" "lambda_role" {
       }
     ]
   })
+
+  tags = {
+    Name = "${var.project_name}-lambda-role"
+  }
 }
 
-# Lambda Basic Execution Policy
+# Attach basic Lambda execution policy
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Custom Policy for Lambda
+# Custom policy for Lambda to access S3 and VPC
 resource "aws_iam_role_policy" "lambda_custom" {
-  name = "${var.project_name}-lambda-policy"
+  name = "${var.project_name}-lambda-custom-policy"
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -70,13 +74,19 @@ resource "aws_iam_role" "ec2_role" {
       }
     ]
   })
+
+  tags = {
+    Name = "${var.project_name}-ec2-role"
+  }
 }
 
+# Instance profile for EC2
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
 }
 
+# Custom policy for EC2 to access S3
 resource "aws_iam_role_policy" "ec2_policy" {
   name = "${var.project_name}-ec2-policy"
   role = aws_iam_role.ec2_role.id

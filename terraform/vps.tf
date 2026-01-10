@@ -58,16 +58,18 @@ resource "aws_security_group" "k8s_nodes" {
   description = "Security group for Kubernetes nodes"
   vpc_id      = aws_vpc.main.id
 
-  # SSH
+  # SSH access
   ingress {
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Kubernetes API
+  # Kubernetes API server
   ingress {
+    description = "Kubernetes API"
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
@@ -76,22 +78,16 @@ resource "aws_security_group" "k8s_nodes" {
 
   # Kafka
   ingress {
+    description = "Kafka"
     from_port   = 9092
     to_port     = 9092
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
-  # Allow all internal communication
-  ingress {
-    from_port = 0
-    to_port   = 65535
-    protocol  = "tcp"
-    self      = true
-  }
-
   # Elasticsearch
   ingress {
+    description = "Elasticsearch"
     from_port   = 9200
     to_port     = 9200
     protocol    = "tcp"
@@ -100,14 +96,25 @@ resource "aws_security_group" "k8s_nodes" {
 
   # Kibana
   ingress {
+    description = "Kibana"
     from_port   = 5601
     to_port     = 5601
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound
+  # Allow all internal communication
+  ingress {
+    description = "Internal cluster communication"
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    self        = true
+  }
+
+  # Allow all outbound traffic
   egress {
+    description = "All outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

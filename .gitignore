@@ -1,0 +1,55 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
+
+# Lambda
+lambda/lambda_function.zip
+*.zip
+
+# SSH Keys
+*.pem
+*.key
+devops-key*
+
+# OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Screenshots (if containing sensitive info)
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg
+
+# Temporary files
+outputs.txt
+*.tmp
+*.bak
+
+# AWS
+.aws/

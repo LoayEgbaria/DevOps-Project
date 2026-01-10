@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-consumer-code
+  namespace: default
+data:
+  consumer.py: |
+    import json
+    import os
+    import logging
+    import time
+    from kafka import KafkaConsumer
+    from elasticsearch import Elasticsearch
+    from datetime import datetime
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    
+    # Environment variables
+    KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+    KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'api-events')
+    KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'consumer-group-1')
+    ES_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost:9200')
+    
+    def main():
+        logger.info(f"Kafka Consumer Starting...")
+        logger.info(f"Kafka Bootstrap Servers: {KAFKA_BOOTSTRAP_SERVERS}")
+        logger.info(f"Kafka Topic: {KAFKA_TOPIC}")
+        logger.info(f"Consumer Group: {KAFKA_GROUP_ID}")
+        logger.info(f"Elasticsearch Host: {ES_HOST}")
+        
+        # Wait for services to be ready
+        time.sleep(10)
+        
+        # Connect to Elasticsearch
+        try:
+            es = Elasticsearch([f'http://{ES_HOST}'], timeout=30)
+            if es.ping():
+                logger.info("Successfully connected to Elasticsearch")
+            else:
+                logger.error("Cannot ping Elasticsearch")
+                es = None
+        except Exception as e:
+            logger.error(f"Failed to connect to Elasticsearch: {e}")
+            es = None
+        
+        # Connect to Kafka and consume messages
+        try:
+            consumer = KafkaConsumer(
+                KAFKA_TOPIC,
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                group_id=KAFKA_GROUP_ID,
+                auto_offset_reset='earliest',
+                enable_auto_commit=True,
+                value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                consumer_timeout_ms=1000
+            )
+            
+            logger.info("Kafka consumer started successfully")
+            
+            # Process messages
+            for message in consumer:
+                try:
+                    event_data = message.value
+                    logger.info(f"Received message from Kafka: {event_data}")
+                    
+                    # Send to Elasticsearch
+                    if es:
+                        doc = {
+                            'timestamp': datetime.utcnow().isoformat(),
+                            'topic': message.topic,
+                            'partition': message.partition,
+                            'offset': message.offset,
+                            'data': event_data,
+                            'consumer_group': KAFKA_GROUP_ID
+                        }
+                        
+                        es.index(index='kafka-events', document=doc)
+                        logger.info("Message logged to Elasticsearch")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing message: {e}")
+        
+        except Exception as e:
+            logger.error(f"Kafka consumer failed: {e}")
+            time.sleep(60)
+    
+    if __name__ == "__main__":
+        while True:
+            try:
+                main()
+            except Exception as e:
+                logger.error(f"Fatal error: {e}")
+                time.sleep(60)

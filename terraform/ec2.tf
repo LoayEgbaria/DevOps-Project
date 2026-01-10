@@ -14,7 +14,7 @@ data "aws_ami" "amazon_linux_2" {
   }
 }
 
-# Master Node
+# Kubernetes Master Node
 resource "aws_instance" "k8s_master" {
   ami                    = data.aws_ami.amazon_linux_2.id
   instance_type          = var.instance_type
@@ -39,7 +39,7 @@ resource "aws_instance" "k8s_master" {
   }
 }
 
-# Worker Nodes
+# Kubernetes Worker Nodes
 resource "aws_instance" "k8s_workers" {
   count                  = 2
   ami                    = data.aws_ami.amazon_linux_2.id
