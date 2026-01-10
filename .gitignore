@@ -41,10 +41,10 @@ venv/
 ENV/
 .venv
 
-# Screenshots (if containing sensitive info)
-screenshots/*.png
-screenshots/*.jpg
-screenshots/*.jpeg
+# Screenshots (if needed)
+#screenshots/*.png
+#screenshots/*.jpg
+#screenshots/*.jpeg
 
 # Temporary files
 outputs.txt
